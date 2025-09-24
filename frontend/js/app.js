@@ -1,7 +1,7 @@
-window.addEventListener("DOMContentLoaded", initApp);
+import { createBook, getBooks, updateBook, deleteBook } from "./api/booksApi.js";
+import { sortBy } from "./utils/sortUtils.js";
 
-const BASE_URL = "http://localhost:8080";
-const BOOKS_URL = `${BASE_URL}/api/books`;
+window.addEventListener("DOMContentLoaded", initApp);
 
 // === Sort globals ===
 let currentSortKey = "id";
@@ -21,15 +21,11 @@ function setupEventListeners() {
     tableBody.addEventListener("click", handleTableClick);
     const form = document.querySelector("#book-form");
     form.addEventListener("submit", handleFormSubmit);
-
     document.querySelector("thead").addEventListener("click", handleSortClick);
 }
 
 async function reloadAndRender() {
     const books = await getBooks();
-
-    // SORT HERE
-    // const sortedBooks = books.sort();
     const sortedBooks = books.sort(sortBy(currentSortKey, isAscending));
     renderTable(sortedBooks);
 
@@ -49,25 +45,6 @@ function updateSortIndicator() {
             }
         }
     });
-}
-
-// <th data-key="id" data-label="ID">ID ▲</th>
-
-// ascending: ▲ (`\u25B2`)
-// descending: ▼ (`\u25BC`)
-
-function sortBy(key, isAsc) {
-    return (a, b) => {
-        const aKey = a[key];
-        const bKey = b[key];
-
-        if (typeof aKey === "number" && typeof bKey === "number") {
-            return isAsc ? aKey - bKey : bKey - aKey;
-        }
-
-        return isAsc ? aKey.localeCompare(bKey) : bKey.localeCompare(aKey);
-
-    };
 }
 
 // ===== Event handlers =====
@@ -165,65 +142,4 @@ function fillBookEditForm(book) {
     document.querySelector("#title").value = book.title;
     document.querySelector("#author").value = book.author;
     document.querySelector("#isbn").value = book.isbn;
-}
-
-// ===== API - CRUD operations =====
-async function getBooks() {
-    const response = await fetch(BOOKS_URL);
-    const books = await response.json();
-    return books;
-}
-
-async function deleteBook(id) {
-    const response = await fetch(`${BOOKS_URL}/${id}`, {
-        method: "DELETE"
-    });
-    if (!response.ok) {
-        const error = new Error(`HTTP error! status: ${response.status}`);
-        error.status = response.status;
-        error.statusText = response.statusText;
-        error.url = response.url;
-        throw error;
-    }
-    return;
-}
-
-async function createBook(book) {
-    const response = await fetch(BOOKS_URL, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        },
-        body: JSON.stringify(book)
-    });
-    if (!response.ok) {
-        const error = new Error(`HTTP error! status: ${response.status}`);
-        error.status = response.status;
-        error.statusText = response.statusText;
-        error.url = response.url;
-        throw error;
-    }
-    const createdBook = await response.json();
-    return createdBook;
-}
-
-async function updateBook(id, book) {
-    const response = await fetch(`${BOOKS_URL}/${id}`, {
-        method: "PUT",
-        headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        },
-        body: JSON.stringify(book)
-    });
-    if (!response.ok) {
-        const error = new Error(`HTTP error! status: ${response.status}`);
-        error.status = response.status;
-        error.statusText = response.statusText;
-        error.url = response.url;
-        throw error;
-    }
-    const updatedBook = await response.json();
-    return updatedBook;
 }
