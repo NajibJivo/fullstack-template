@@ -3,6 +3,10 @@ window.addEventListener("DOMContentLoaded", initApp);
 const BASE_URL = "http://localhost:8080";
 const BOOKS_URL = `${BASE_URL}/api/books`;
 
+// === Sort globals ===
+let currentSortKey = "id";
+let isAscending = true;
+
 
 // ===== Entry Point =====
 function initApp() {
@@ -17,13 +21,53 @@ function setupEventListeners() {
     tableBody.addEventListener("click", handleTableClick);
     const form = document.querySelector("#book-form");
     form.addEventListener("submit", handleFormSubmit);
+
+    document.querySelector("thead").addEventListener("click", handleSortClick);
 }
 
 async function reloadAndRender() {
     const books = await getBooks();
-    renderTable(books);
-    console.log("Data reloaded and table rendered");
 
+    // SORT HERE
+    // const sortedBooks = books.sort();
+    const sortedBooks = books.sort(sortBy(currentSortKey, isAscending));
+    renderTable(sortedBooks);
+
+    updateSortIndicator();
+
+}
+
+function updateSortIndicator() {
+    const thElems = document.querySelectorAll("th[data-label]");
+    thElems.forEach(el => {
+        el.textContent = el.getAttribute("data-label");
+        if (el.getAttribute("data-key") === currentSortKey) {
+            if (isAscending) {
+                el.textContent += "\u25B2";
+            } else {
+                el.textContent += "\u25BC";
+            }
+        }
+    });
+}
+
+// <th data-key="id" data-label="ID">ID ▲</th>
+
+// ascending: ▲ (`\u25B2`)
+// descending: ▼ (`\u25BC`)
+
+function sortBy(key, isAsc) {
+    return (a, b) => {
+        const aKey = a[key];
+        const bKey = b[key];
+
+        if (typeof aKey === "number" && typeof bKey === "number") {
+            return isAsc ? aKey - bKey : bKey - aKey;
+        }
+
+        return isAsc ? aKey.localeCompare(bKey) : bKey.localeCompare(aKey);
+
+    };
 }
 
 // ===== Event handlers =====
@@ -65,6 +109,27 @@ async function handleTableClick(event) {
         const row = target.closest("tr");
         const bookId = row.getAttribute("data-id");
         await deleteBook(bookId);
+    }
+    await reloadAndRender();
+}
+
+async function handleSortClick(event) {
+    const th = event.target.closest("th");
+    if (th === null | th === undefined) {
+        return;
+    }
+
+    const key = th.getAttribute("data-key");
+
+    if (!key) {
+        return;
+    }
+
+    if (key === currentSortKey) {
+        isAscending = !isAscending;
+    } else {
+        currentSortKey = key;
+        isAscending = true;
     }
     await reloadAndRender();
 }
