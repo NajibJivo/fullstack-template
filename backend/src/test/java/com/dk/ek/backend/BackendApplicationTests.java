@@ -1,10 +1,10 @@
-package ek.osnb.example;
+package com.dk.ek.backend;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class ApplicationTests {
+class BackendApplicationTests {
 
     @Test
     void contextLoads() {
