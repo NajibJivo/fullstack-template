@@ -1,5 +1,6 @@
 function createFetchOptions(httpMethod, body, headers = {}) {
     const options = {
+        method: httpMethod,
         headers: {
             "Accept": "application/json",
             ...headers
@@ -15,21 +16,19 @@ function createFetchOptions(httpMethod, body, headers = {}) {
 }
 
 async function handleResponse(res) {
-    if (res === 204) {
+    if (res.status === 204) {
         return null;
     }
 
     if (!res.ok) {
-        const error = new Error("HTTP error! status: " + res.status);
-        error.statusText = res.statusText;
-
-        throw error;
+        throw new Error("HTTP error! status: " + res.status);
+        // error.statusText = res.statusText;
+        // throw error;
     }
 
     // Should we check if it is JSON????
     return res.json();
 }
-
 
 export async function get(url, headers) {
     const options = createFetchOptions("GET", null, headers);
@@ -54,4 +53,3 @@ export async function del(url, headers) {
     const res = await fetch(url, options);
     return handleResponse(res);
 }
-
