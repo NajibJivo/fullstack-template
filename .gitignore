@@ -614,3 +614,5 @@ FodyWeavers.xsd
 # End of https://www.toptal.com/developers/gitignore/api/java,intellij,intellij+all,visualstudio,visualstudiocode
 .vscode/
 /old/**
+old/**
+frontend/old/*
