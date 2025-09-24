@@ -2,16 +2,15 @@ package ek.osnb.example.controller;
 
 import ek.osnb.example.model.Book;
 import ek.osnb.example.repository.BookRepository;
-import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit;
+
 
 @RestController
 @RequestMapping("/api/books")
-//@CrossOrigin(origins = "${cors.allowed.orgins:http://localhost:5501}")
+@CrossOrigin(origins = "${cors.allowed.orgins:http://localhost:5501}")
 public class BookController {
 
     private final BookRepository bookRepository;
