@@ -2,6 +2,9 @@
 const API_URL = "http://localhost:8080/api/users";
 //console.clear();
 
+let currentSortKey = "name";  // hvilken kolonne er aktiv
+let currentSortDirection = "asc"; // 'asc' eller 'desc'
+
 (async function test(){
   try {
     console.log("Fetching:", API_URL);
@@ -181,3 +184,131 @@ const oddSquares = numbers13
 .map( n => n * n);
 
 console.log('#13 - oddSquares:', oddSquares);  // [1, 9, 25]
+
+
+const createForm = document.getElementById('createForm');
+const nameInp = document.getElementById('name');
+const emailInp = document.getElementById('email');
+const usernameInp = document.getElementById('username');
+
+createForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const payLoad = {
+        name: nameInp.value.trim(),
+        email: emailInp.value.trim(),
+        username: usernameInp.value.trim(),
+    };
+    const res = await fetch(API_URL, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(payLoad)
+    });
+    if(!res.ok) {console.error("POST failed", res.status); return;}
+
+    const created = await res.json();
+    usersCache = [...usersCache, created]; 
+    renderTable(usersCache);             // Vis igen
+    createForm.reset();
+});
+
+//  9a) Render-funktion
+let usersCache = [];
+const tbody = document.getElementById('tbody');
+
+function renderTable(data) {
+    tbody.innerHTML = data.map(u => `
+        <tr data-id="${u.id}">
+            <td>${u.name}</td>
+            <td>${u.email}</td>
+            <td>${u.username}</td>
+            <td><button data-action='delete'>Delete</button></td>
+            </tr>
+        `).join("");
+}
+
+
+// 9a) Init: hent brugere, sæt cache, render
+(async function initUi() {
+    try{
+        const res = await fetch("http://localhost:8080/api/users");
+        console.log('initUI status:', res.status);
+        if(!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+        const data = await res.json();
+        usersCache = data;
+        renderTable(data);
+        updateHeaderArrows();
+    }catch (err) {
+        console.error('initUI error:', err);
+    }
+})();
+
+// Find thead
+const thead = document.getElementById("th");
+
+//  Sorter helper
+function sortUsers(arr, key, dir) {
+    const asc = dir === "asc";
+    return [...arr].sort((a, b) => {
+        const A = a[key], B = b[key];
+        if(typeof A === "number" && typeof B === "number") {
+            return asc ? A - B : B - A;
+        }
+        return asc ? String(A).localeCompare(String(B))
+                   : String(B).localeCompare(String(A));
+    });
+}
+
+// Pile i header (Step 13 bonus)
+function updateHeaderArrows() {
+    [...thead.querySelectorAll("th[data-key]")].forEach(th=> {
+        const label = th.dataset.label;
+        const key   = th.dataset.key;
+        const arrow = key === currentSortKey
+        ? (currentSortDirection === "asc" ? "\u25B2" : "\u25BC")
+        : "";
+        th.textContent = label + arrow;
+    });
+}
+
+// Klik-håndtering (Step 11-12)
+thead.addEventListener("click", (e) => {
+    const th = e.target.closest("th[data-key]");
+    if(!th) return;
+
+    const key = th.dataset.key;
+
+    if(key === currentSortKey) {
+        currentSortDirection = (currentSortDirection === "asc") ? "desc" : "asc";
+    } else {
+        currentSortKey = key;
+        currentSortDirection = "asc"; 
+    }
+
+    const sorted = sortUsers(usersCache, currentSortKey, currentSortDirection);
+    renderTable(sorted);
+    updateHeaderArrows();
+})
+
+console.log("sort state:", currentSortKey, currentSortDirection);
+
+// 9c) Delegér klik på Delete-knapper i tbody
+tbody.addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-action='delete']");
+    if(!btn) return;
+
+    const tr = btn.closest("tr");
+    const id = Number(tr.dataset.id);
+
+    try{
+        const res = await fetch(`${API_URL}/${id}`, {method: "DELETE"});
+        if(!res.ok) throw new Error(res.status);
+
+        // Opdatér cache + re-render
+        usersCache = usersCache.filter(u => u.id !== id);
+        renderTable(usersCache);
+    } catch(err) {
+        console.error("DELETE failed:", err);
+    }
+});
+ 

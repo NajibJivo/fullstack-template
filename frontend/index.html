@@ -2,12 +2,55 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <title>Array Methods, Users Fullstack</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Array Methods - Øvelser</title>
+    <link rel="stylesheet" href="styles.css"/>
 </head>
 <body>
-    <h1>Array Methods - run in the console</h1>
+    <div class="container">
     <p>Open DevTools (F12) -> Console. Reload the page to run the test</p>
+
+    <h1>Users</h1>
+      <!-- Create form -->
+       <form id="createForm" class="row">
+         <div class="field">
+             <label for="name">Name</label>
+             <input id="name" name="name" required />
+         </div>
+
+         <div class="field">
+             <label for="email">Email</label>
+            <input id="email" name="email" required />
+         </div>
+
+         <div class="field">
+            <label for="username">Username</label>
+            <input id="username" name="username" required />
+         </div>
+
+         <!-- Search + Reset -->
+        <button type="submit">Create</button>
+       </form>
+       <form id="searchForm">
+        <input id="q" name="q" placeholder="Search name/email/username"/>
+        <button type="submit">Search</button>
+        <button type="button" id="resetBtn">Reset</button>
+       </form>
+
+      <!-- Table -->
+    <table>
+    <thead id="th">
+        <tr>
+            <th data-key="name"     data-label="Name">Name</th>
+            <th data-key="email"    data-label="email">Email</th>
+            <th data-key="username"     data-label="username">Username</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+</table>
+</div>
+        <!-- script til sidst -->
     <script type="module" src="./app.js"></script>
 </body>
 </html>
