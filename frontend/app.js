@@ -1,22 +1,10 @@
 //Point frontend to backend
-const API_URL = "http://localhost:8080/api/users";
-//console.clear();
+import { getUsers, createUser, deleteUser, updateUser } from "./api.js";
 
+
+let usersCache = [];
 let currentSortKey = "name";  // hvilken kolonne er aktiv
 let currentSortDirection = "asc"; // 'asc' eller 'desc'
-
-(async function test(){
-  try {
-    console.log("Fetching:", API_URL);
-    const res = await fetch(API_URL);
-    console.log("Status:", res.status, res.statusText);
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-    const data = await res.json();
-    console.log("FE ↔ BE OK:", data, "antal:", data.length);
-  } catch (err) {
-    console.error("FE ↔ BE ERROR:", err);
-  }
-})();
 
 
 console.log('=== Array Methods ===')
@@ -37,7 +25,6 @@ const users2 = [
 const userNames = users2.map(user => user.name);
 console.log('#2 - userNames', userNames);
 
-const numbers = [1, 2, 3, 4, 5, 6];
 
 // #3. Filter - even numbers (lige tal)
 const numbers3 = [1,2,3,4,5,6];
@@ -185,35 +172,33 @@ const oddSquares = numbers13
 
 console.log('#13 - oddSquares:', oddSquares);  // [1, 9, 25]
 
-
+// ----------- Create -----------
 const createForm = document.getElementById('createForm');
 const nameInp = document.getElementById('name');
 const emailInp = document.getElementById('email');
 const usernameInp = document.getElementById('username');
 
+
 createForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const payLoad = {
+    const payload = {
         name: nameInp.value.trim(),
         email: emailInp.value.trim(),
         username: usernameInp.value.trim(),
     };
-    const res = await fetch(API_URL, {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify(payLoad)
-    });
-    if(!res.ok) {console.error("POST failed", res.status); return;}
-
-    const created = await res.json();
+    
+    try{
+    const created = await createUser(payload);
     usersCache = [...usersCache, created]; 
-    renderTable(usersCache);             // Vis igen
+    renderSorted();
     createForm.reset();
+    } catch (err){
+        console.error("POST failed:", err)
+    }
 });
 
-//  9a) Render-funktion
-let usersCache = [];
+//  9a) Render-funktion -------------render--------
 const tbody = document.getElementById('tbody');
 
 function renderTable(data) {
@@ -228,25 +213,43 @@ function renderTable(data) {
 }
 
 
-// 9a) Init: hent brugere, sæt cache, render
+// 9a) --------- Init: hent brugere, sæt cache, render  ---------- 
 (async function initUi() {
     try{
-        const res = await fetch("http://localhost:8080/api/users");
-        console.log('initUI status:', res.status);
-        if(!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-        const data = await res.json();
+        const data = await getUsers();
         usersCache = data;
-        renderTable(data);
-        updateHeaderArrows();
+        renderSorted();
     }catch (err) {
         console.error('initUI error:', err);
     }
 })();
 
-// Find thead
+
+
+// 9c) Delegér klik på Delete-knapper i tbody
+// ---------- delete ----------
+tbody.addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-action='delete']");
+    if(!btn) return;
+
+    const id = Number(btn.closest("tr").dataset.id);
+
+    
+    try{
+        if(!confirm("Delete this user?")) return;
+        await deleteUser(id);
+        
+        // Opdatér cache + re-render
+        usersCache = usersCache.filter(u => u.id !== id);
+        renderSorted();
+    } catch(err) {
+        console.error("DELETE failed:", err);
+    }
+});
+
+//  Sorter helper ---------- sort ---------- 
 const thead = document.getElementById("th");
 
-//  Sorter helper
 function sortUsers(arr, key, dir) {
     const asc = dir === "asc";
     return [...arr].sort((a, b) => {
@@ -285,30 +288,80 @@ thead.addEventListener("click", (e) => {
         currentSortDirection = "asc"; 
     }
 
-    const sorted = sortUsers(usersCache, currentSortKey, currentSortDirection);
-    renderTable(sorted);
-    updateHeaderArrows();
+    renderSorted();
 })
 
 console.log("sort state:", currentSortKey, currentSortDirection);
 
-// 9c) Delegér klik på Delete-knapper i tbody
-tbody.addEventListener("click", async (e) => {
-    const btn = e.target.closest("[data-action='delete']");
-    if(!btn) return;
+// ---- Helper renderSorted (to avoid redundant code)---------------
+function renderSorted(list = usersCache) {
+    const sorted = sortUsers(list, currentSortKey, currentSortDirection);
+    renderTable(sorted);
+    updateHeaderArrows();
+} 
 
-    const tr = btn.closest("tr");
-    const id = Number(tr.dataset.id);
 
-    try{
-        const res = await fetch(`${API_URL}/${id}`, {method: "DELETE"});
-        if(!res.ok) throw new Error(res.status);
+// ------------- Search & Reset ---------
+const searchForm = document.getElementById("searchForm"); // <form> omkring søgningen
+const q = document.getElementById("q");  // <input> hvor du skriver
+const resetBtn = document.getElementById("resetBtn"); // "Reset"-knappen
 
-        // Opdatér cache + re-render
-        usersCache = usersCache.filter(u => u.id !== id);
-        renderTable(usersCache);
-    } catch(err) {
-        console.error("DELETE failed:", err);
-    }
+// submit: filtrér (case-insensitive) på name/email/username
+searchForm.addEventListener("submit", (e) => {
+    e.preventDefault();                         // 1) Undgå at formen “loader siden om”
+    const term = q.value.trim().toLowerCase();  // 2) Læs søgetekst, trim + lowercase
+
+      // 3) Filtrér usersCache (case-insensitive match på tre felter)
+    const filtered = usersCache.filter(u => 
+        u.name.toLowerCase().includes(term) ||
+        u.email.toLowerCase().includes(term) ||
+        u.username.toLowerCase().includes(term)
+    );
+
+    // 4) Bevar nuværende sortering når vi viser resultatet + 
+    // 5) Render + opdatér pile
+    renderSorted(filtered);
+
+   
+    resetBtn.addEventListener("click", () => {
+    q.value = "";          // ryd søgeteksten
+    renderSorted();        // vis alle igen med nuværende sortering
+    });
+
 });
  
+
+
+
+//===================Kodedokumentation=============================================
+/*Vi har også nogle “globale” ting:
+
+usersCache: alle brugere vi har hentet fra backend.
+
+currentSortKey / currentSortDirection: styrer hvilken kolonne der sorteres på og retningen.
+
+sortUsers(...): sorterer et array ud fra de to værdier.
+
+renderTable(...): viser et array af brugere i tabellen.
+
+updateHeaderArrows(): sætter ▲/▼ på aktiv header.
+
+
+
+
+
+Mini-mentalmodel (Det er bare en lille huskeregel / mental tegning af, hvordan min kode tænker.)
+ * usersCache = “sandheden” i frontend (alle brugere hentet fra backend).
+
+* Search = lav et filter af usersCache → filtered.
+
+*Sort = tag det array, der skal vises (enten usersCache eller filtered) og sortér det til visning.
+
+*Render = vis det sorterede array i tabellen (ændrer ikke data, kun UI).
+
+*Reset = ryd søgetekst → vis usersCache igen (med den samme sortering).
+
+* Kort sagt:
+  Cache → (valgfri) Filter → Sort → Render.
+
+*/
